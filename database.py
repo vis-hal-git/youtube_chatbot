@@ -71,8 +71,9 @@ def get_all_videos() -> List[Dict]:
     return [_doc_to_dict(doc) for doc in docs]
 
 def create_session(name: str = None) -> str:
+    """Create a new chat session"""
     if not name:
-        name = f"Session {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        name = "New Session"
     now = datetime.now()
     doc = {
         "name": name,
