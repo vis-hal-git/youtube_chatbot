@@ -7,3 +7,7 @@ youtube-transcript-api
 faiss-cpu
 python-dotenv
 fpdf2
+fastapi
+uvicorn
+pydantic
+pymongo

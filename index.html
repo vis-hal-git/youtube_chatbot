@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VidMind — AI Video Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- Ambient background -->
+  <div class="bg-ambient">
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+    <div class="ambient-orb orb-3"></div>
+    <div class="scanlines"></div>
+  </div>
+
+  <!-- App Shell -->
+  <div class="app-shell" id="appShell">
+
+    <!-- ═══════════════════════════════════════ SIDEBAR ═══ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-inner">
+
+        <!-- Logo -->
+        <div class="sidebar-logo">
+          <div class="logo-icon">
+            <i class="fa-solid fa-brain"></i>
+          </div>
+          <div class="logo-text">
+            <span class="logo-name">VidMind</span>
+            <span class="logo-tagline">AI Video Intelligence</span>
+          </div>
+          <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">
+            <i class="fa-solid fa-bars-staggered"></i>
+          </button>
+        </div>
+
+        <!-- Session Management -->
+        <div class="sidebar-section">
+          <div class="section-label">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>Session</span>
+          </div>
+          <div class="session-controls">
+            <button class="btn-sidebar btn-primary" id="newSessionBtn">
+              <i class="fa-solid fa-plus"></i>
+              <span>New Session</span>
+            </button>
+            <button class="btn-sidebar btn-ghost" id="saveSessionBtn">
+              <i class="fa-solid fa-floppy-disk"></i>
+              <span>Save Session</span>
+            </button>
+          </div>
+          <div class="session-select-wrap">
+            <select class="session-select" id="sessionSelect">
+              <option value="">Load a session…</option>
+              <option value="s1">Session: ML Tutorial Series</option>
+              <option value="s2">Session: React Deep Dive</option>
+              <option value="s3">Session: History of Computing</option>
+            </select>
+            <i class="fa-solid fa-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+        <!-- Video Management -->
+        <div class="sidebar-section">
+          <div class="section-label">
+            <i class="fa-brands fa-youtube"></i>
+            <span>Videos</span>
+          </div>
+          <div class="url-input-wrap">
+            <input
+              type="text"
+              class="url-input"
+              id="videoUrlInput"
+              placeholder="Paste YouTube URL…"
+            />
+            <button class="url-add-btn" id="addVideoBtn" title="Add video">
+              <i class="fa-solid fa-arrow-right"></i>
+            </button>
+          </div>
+          <div id="loadingBar" class="loading-bar hidden">
+            <div class="loading-fill"></div>
+          </div>
+
+          <!-- Video list -->
+          <div class="video-list" id="videoList">
+            <!-- Injected by JS -->
+          </div>
+
+          <!-- Chat target selector -->
+          <div class="chat-target-wrap" id="chatTargetWrap">
+            <div class="chat-target-label">Chat with:</div>
+            <div class="chat-target-group" id="chatTargetGroup">
+              <button class="target-btn active" data-target="all">
+                <i class="fa-solid fa-layer-group"></i> All Videos
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Export -->
+        <div class="sidebar-section">
+          <div class="section-label">
+            <i class="fa-solid fa-file-export"></i>
+            <span>Export</span>
+          </div>
+          <div class="export-buttons">
+            <button class="btn-export" data-format="markdown">
+              <i class="fa-brands fa-markdown"></i>
+              <span>Markdown</span>
+            </button>
+            <button class="btn-export" data-format="text">
+              <i class="fa-solid fa-file-lines"></i>
+              <span>Plain Text</span>
+            </button>
+            <button class="btn-export" data-format="pdf">
+              <i class="fa-solid fa-file-pdf"></i>
+              <span>PDF</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Sidebar footer -->
+        <div class="sidebar-footer">
+          <div class="status-dot"></div>
+          <span class="status-text" id="statusText">Ready</span>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- ═══════════════════════════════════════ MAIN ═══ -->
+    <main class="main-content">
+
+      <!-- Top Nav -->
+      <nav class="top-nav">
+        <div class="nav-tabs" id="navTabs">
+          <button class="nav-tab active" data-view="chat">
+            <i class="fa-solid fa-comments"></i>
+            <span>Chat</span>
+          </button>
+          <button class="nav-tab" data-view="bookmarks">
+            <i class="fa-solid fa-bookmark"></i>
+            <span>Bookmarks</span>
+            <span class="tab-badge" id="bookmarkBadge">0</span>
+          </button>
+          <button class="nav-tab" data-view="notes">
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span>Notes</span>
+          </button>
+          <button class="nav-tab" data-view="history">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>History</span>
+          </button>
+        </div>
+        <div class="nav-meta">
+          <div class="active-session-label" id="activeSessionLabel">
+            <i class="fa-solid fa-circle-dot pulse-dot"></i>
+            <span>New Session</span>
+          </div>
+        </div>
+      </nav>
+
+      <!-- ────────── CHAT VIEW ────────── -->
+      <section class="view active" id="viewChat">
+        <div class="chat-container">
+          <div class="chat-messages" id="chatMessages">
+            <!-- Welcome state -->
+            <div class="chat-welcome" id="chatWelcome">
+              <div class="welcome-icon">
+                <i class="fa-solid fa-satellite-dish"></i>
+              </div>
+              <h2 class="welcome-title">Start a Conversation</h2>
+              <p class="welcome-subtitle">Add YouTube videos in the sidebar, then ask anything about their content.</p>
+              <div class="welcome-suggestions">
+                <button class="suggestion-chip" data-prompt="Summarize all loaded videos for me.">
+                  <i class="fa-solid fa-list-ul"></i> Summarize videos
+                </button>
+                <button class="suggestion-chip" data-prompt="What are the key topics covered?">
+                  <i class="fa-solid fa-tags"></i> Key topics
+                </button>
+                <button class="suggestion-chip" data-prompt="Compare the main ideas across all videos.">
+                  <i class="fa-solid fa-code-compare"></i> Compare ideas
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Typing indicator -->
+          <div class="typing-indicator hidden" id="typingIndicator">
+            <div class="typing-avatar"><i class="fa-solid fa-brain"></i></div>
+            <div class="typing-dots">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+
+          <!-- Chat input area -->
+          <div class="chat-input-area">
+            <div class="chat-input-wrap">
+              <div class="input-context-pill" id="inputContextPill">
+                <i class="fa-solid fa-layer-group"></i>
+                <span id="inputContextLabel">All Videos</span>
+              </div>
+              <textarea
+                class="chat-textarea"
+                id="chatInput"
+                placeholder="Ask anything about the videos…"
+                rows="1"
+              ></textarea>
+              <div class="input-actions">
+                <button class="btn-send" id="sendBtn" title="Send message">
+                  <i class="fa-solid fa-paper-plane"></i>
+                </button>
+              </div>
+            </div>
+            <div class="input-footer">
+              <span class="input-hint"><kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for new line</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ────────── BOOKMARKS VIEW ────────── -->
+      <section class="view" id="viewBookmarks">
+        <div class="view-header">
+          <h2 class="view-title"><i class="fa-solid fa-bookmark"></i> Bookmarks</h2>
+          <p class="view-subtitle">Save important AI responses for quick reference.</p>
+        </div>
+
+        <!-- Add bookmark form -->
+        <div class="card add-bookmark-card">
+          <div class="card-header">
+            <i class="fa-solid fa-plus-circle"></i>
+            <span>Add Custom Bookmark</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Title</label>
+            <input type="text" class="form-input" id="bookmarkTitle" placeholder="Bookmark title…" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Note</label>
+            <textarea class="form-textarea" id="bookmarkNote" placeholder="Add a note or quote…" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Linked Video</label>
+            <select class="form-select" id="bookmarkVideo">
+              <option value="">— None —</option>
+            </select>
+          </div>
+          <button class="btn-primary-full" id="addBookmarkBtn">
+            <i class="fa-solid fa-bookmark"></i> Save Bookmark
+          </button>
+        </div>
+
+        <!-- Bookmark list -->
+        <div class="bookmarks-grid" id="bookmarksList">
+          <!-- injected by JS -->
+        </div>
+      </section>
+
+      <!-- ────────── NOTES VIEW ────────── -->
+      <section class="view" id="viewNotes">
+        <div class="view-header">
+          <h2 class="view-title"><i class="fa-solid fa-pen-to-square"></i> Notes</h2>
+          <p class="view-subtitle">Personal notes linked to your video sessions.</p>
+        </div>
+
+        <div class="notes-layout">
+          <!-- Note list sidebar -->
+          <div class="notes-list-panel">
+            <div class="notes-list-header">
+              <span>My Notes</span>
+              <button class="btn-icon-sm" id="newNoteBtn" title="New note">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+            </div>
+            <div class="notes-list" id="notesList">
+              <!-- injected by JS -->
+            </div>
+          </div>
+
+          <!-- Note editor -->
+          <div class="note-editor-panel">
+            <div class="note-editor-header">
+              <input type="text" class="note-title-input" id="noteTitleInput" placeholder="Note title…" />
+              <div class="note-editor-meta">
+                <select class="form-select note-video-select" id="noteVideoSelect">
+                  <option value="">— No video linked —</option>
+                </select>
+                <button class="btn-icon-sm" id="saveNoteBtn" title="Save note">
+                  <i class="fa-solid fa-floppy-disk"></i>
+                </button>
+                <button class="btn-icon-sm btn-danger" id="deleteNoteBtn" title="Delete note">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+            <div class="note-toolbar">
+              <button class="toolbar-btn" data-cmd="bold" title="Bold"><i class="fa-solid fa-bold"></i></button>
+              <button class="toolbar-btn" data-cmd="italic" title="Italic"><i class="fa-solid fa-italic"></i></button>
+              <button class="toolbar-btn" data-cmd="underline" title="Underline"><i class="fa-solid fa-underline"></i></button>
+              <div class="toolbar-sep"></div>
+              <button class="toolbar-btn" data-cmd="insertUnorderedList" title="Bullet list"><i class="fa-solid fa-list-ul"></i></button>
+              <button class="toolbar-btn" data-cmd="insertOrderedList" title="Numbered list"><i class="fa-solid fa-list-ol"></i></button>
+              <div class="toolbar-sep"></div>
+              <button class="toolbar-btn" data-cmd="formatBlock|h3" title="Heading"><i class="fa-solid fa-heading"></i></button>
+            </div>
+            <div
+              class="note-editor-body"
+              id="noteEditorBody"
+              contenteditable="true"
+              data-placeholder="Start writing your note here…"
+            ></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ────────── HISTORY VIEW ────────── -->
+      <section class="view" id="viewHistory">
+        <div class="view-header">
+          <h2 class="view-title"><i class="fa-solid fa-clock-rotate-left"></i> History</h2>
+          <p class="view-subtitle">Search and revisit past conversations.</p>
+        </div>
+
+        <div class="history-search-wrap">
+          <i class="fa-solid fa-magnifying-glass history-search-icon"></i>
+          <input type="text" class="history-search" id="historySearch" placeholder="Search messages across all sessions…" />
+        </div>
+
+        <div class="history-layout">
+          <!-- Session list -->
+          <div class="history-sessions-panel">
+            <div class="panel-label">Past Sessions</div>
+            <div class="history-sessions-list" id="historySessionsList">
+              <!-- injected by JS -->
+            </div>
+          </div>
+          <!-- Session detail -->
+          <div class="history-detail-panel" id="historyDetailPanel">
+            <div class="history-empty">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+              <p>Select a session to view its messages</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ═══════════ TOAST NOTIFICATIONS ═══════════ -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ═══════════ CONFIRM MODAL ═══════════ -->
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal-box">
+      <div class="modal-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <h3 class="modal-title" id="modalTitle">Confirm Action</h3>
+      <p class="modal-body" id="modalBody">Are you sure?</p>
+      <div class="modal-actions">
+        <button class="btn-ghost-modal" id="modalCancel">Cancel</button>
+        <button class="btn-danger-modal" id="modalConfirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
