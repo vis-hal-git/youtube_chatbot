@@ -259,7 +259,10 @@ def export_to_pdf(export_data: ExportData) -> bytes:
             pdf.ln(5)
     
     # Return PDF as bytes
-    return pdf.output()
+    out = pdf.output()
+    if isinstance(out, str):
+        return out.encode('latin-1', errors='replace')
+    return bytes(out)
 
 
 def get_export_filename(session_name: str, format: str) -> str:
