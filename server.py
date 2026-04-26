@@ -150,12 +150,19 @@ async def add_video(req: VideoRequest):
         db.add_video_to_session(req.session_id, video_db_id)
         video_data = db.get_video_by_id(video_db_id)
         
+        session = db.get_session(req.session_id)
+        session_name = None
+        if session and session['name'] == "New Session":
+            session_name = f"Session - {video_id[:8]}"
+            db.update_session_name(req.session_id, session_name)
+            
         return {
             "id": video_data['id'],
             "videoId": video_id,
             "url": req.url,
             "title": video_data['title'],
-            "thumb": f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
+            "thumb": f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg",
+            "sessionName": session_name
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -257,12 +264,18 @@ async def get_session_history():
     sessions = db.get_all_sessions()
     history_sessions = []
     for s in sessions:
+        msgs = db.get_session_messages(s['id'])
         history_sessions.append({
             "id": s['id'],
             "name": s['name'],
             "createdAt": s['created_at'],
             "messageCount": s['message_count'],
-            "messages": [] # Can populate a snippet if desired
+            "messages": [{
+                "id": m["id"],
+                "role": m["role"],
+                "content": m["content"],
+                "timestamp": m["created_at"]
+            } for m in msgs]
         })
     return history_sessions
 
