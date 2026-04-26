@@ -40,6 +40,24 @@ class ExportRequest(BaseModel):
     format: str
     session_id: str
 
+import urllib.request
+import html as html_lib
+
+def get_yt_metadata(url):
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        html = urllib.request.urlopen(req, timeout=5).read().decode('utf-8')
+        import re
+        title_match = re.search(r'<title>(.*?)</title>', html)
+        title = html_lib.unescape(title_match.group(1).replace(' - YouTube', '')) if title_match else None
+        
+        channel_match = re.search(r'<link itemprop="name" content="(.*?)">', html)
+        channel = html_lib.unescape(channel_match.group(1)) if channel_match else None
+        
+        return title, channel
+    except Exception:
+        return None, None
+
 def extract_video_id(url):
     patterns = [
         r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)',
@@ -94,6 +112,7 @@ async def load_session(session_id: str):
             "videoId": vid,
             "url": v['url'],
             "title": v.get('title') or f"Video {vid[:8]}",
+            "channel": v.get('channel'),
             "thumb": f"https://img.youtube.com/vi/{vid}/mqdefault.jpg"
         })
             
@@ -141,10 +160,14 @@ async def add_video(req: VideoRequest):
             db_vid = db.get_video(video_id)
             transcript_text = db_vid.get("transcript", "") if db_vid else ""
         
+        meta_title, meta_channel = get_yt_metadata(req.url)
+        video_title = meta_title or f"YouTube Video ({video_id[:6]})"
+        
         video_db_id = db.save_video(
             video_id=video_id,
             url=req.url,
-            title=f"YouTube Video ({video_id[:6]})", 
+            title=video_title,
+            channel=meta_channel,
             transcript=transcript_text
         )
         db.add_video_to_session(req.session_id, video_db_id)
@@ -153,7 +176,7 @@ async def add_video(req: VideoRequest):
         session = db.get_session(req.session_id)
         session_name = None
         if session and session['name'] == "New Session":
-            session_name = f"Session - {video_id[:8]}"
+            session_name = f"Session: {video_title[:30]}"
             db.update_session_name(req.session_id, session_name)
             
         return {
@@ -161,6 +184,7 @@ async def add_video(req: VideoRequest):
             "videoId": video_id,
             "url": req.url,
             "title": video_data['title'],
+            "channel": video_data.get('channel'),
             "thumb": f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg",
             "sessionName": session_name
         }

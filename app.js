@@ -338,7 +338,7 @@ function renderVideoList() {
       </div>
       <div class="video-info">
         <div class="video-title" title="${escapeHtml(v.title)}">${escapeHtml(v.title)}</div>
-        <div class="video-meta">${v.videoId.substring(0, 10)}…</div>
+        <div class="video-meta">${v.channel ? escapeHtml(v.channel) : v.videoId.substring(0, 10) + '…'}</div>
       </div>
       <button class="video-remove-btn" data-id="${v.id}" title="Remove video">
         <i class="fa-solid fa-xmark"></i>
