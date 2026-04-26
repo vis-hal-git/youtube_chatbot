@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  vidmind-app:
+    build: .
+    container_name: vidmind-app
+    ports:
+      - "8000:8000"
+    environment:
+      # These environment variables will be picked up from your .env file
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MONGO_URI=mongodb://vidmind-mongo:27017/vidmind
+    depends_on:
+      - vidmind-mongo
+    restart: unless-stopped
+
+  vidmind-mongo:
+    image: mongo:latest
+    container_name: vidmind-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
