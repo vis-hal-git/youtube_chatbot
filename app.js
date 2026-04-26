@@ -810,8 +810,9 @@ els.exportBtns.forEach(btn => {
         const txt = generateTextExport();
         downloadBlob(txt, 'text/plain', 'vidmind-chat.txt');
       } else if (format === 'pdf') {
-        toast('PDF export will be handled by the backend API', 'info');
-        await API.exportChat('pdf');
+        toast('Generating PDF...', 'info');
+        const blob = await API.exportChat('pdf');
+        downloadBlob(blob, 'application/pdf', 'vidmind-chat.pdf');
       }
       toast(`Exported as ${format.toUpperCase()}`, 'success');
     } catch (err) {

@@ -271,5 +271,39 @@ async def search_history(q: str):
     results = db.search_messages(q)
     return results
 
+@app.post("/api/export")
+async def export_chat(req: ExportRequest):
+    session = db.get_session(req.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    messages = db.get_session_messages(req.session_id)
+    videos = db.get_session_videos(req.session_id)
+    bookmarks = db.get_session_bookmarks(req.session_id)
+    notes = db.get_session_notes(req.session_id)
+    
+    export_data = ExportData(
+        session=ChatSession.from_dict(session),
+        messages=[Message.from_dict(m) for m in messages],
+        videos=[Video.from_dict(v) for v in videos],
+        bookmarks=[Bookmark.from_dict(b) for b in bookmarks],
+        notes=[Note.from_dict(n) for n in notes]
+    )
+    
+    if req.format == "pdf":
+        try:
+            content = export_to_pdf(export_data)
+            filename = get_export_filename(export_data.session.name, "pdf")
+            from fastapi.responses import Response
+            return Response(
+                content=content, 
+                media_type="application/pdf",
+                headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+            
+    raise HTTPException(status_code=400, detail="Unsupported format")
+
 # Mount static files at root AFTER all API routes to serve index.html, styles.css, and app.js
 app.mount("/", StaticFiles(directory=".", html=True), name="static")
