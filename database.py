@@ -32,18 +32,17 @@ def _doc_to_dict(doc: dict) -> Optional[dict]:
     # but fastapi automatically handles datetime objects
     return doc
 
-def save_video(video_id: str, url: str, title: str = None, 
-               channel: str = None, duration: str = None, 
-               transcript: str = None) -> str:
+def save_video(video_id: str, url: str, metadata: dict = None, transcript: str = None) -> str:
     now = datetime.now()
     update_data = {
         "url": url,
-        "title": title,
-        "channel": channel,
-        "duration": duration,
         "transcript": transcript,
         "updated_at": now
     }
+    if metadata:
+        for k, v in metadata.items():
+            update_data[k] = v
+            
     # remove Nones to not overwrite existing data with null
     update_data = {k: v for k, v in update_data.items() if v is not None}
     

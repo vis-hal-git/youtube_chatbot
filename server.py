@@ -47,16 +47,33 @@ def get_yt_metadata(url):
     try:
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         html = urllib.request.urlopen(req, timeout=5).read().decode('utf-8')
-        import re
+        import re, json, html as html_lib
+        
+        match = re.search(r'var ytInitialPlayerResponse = (\{.*?\});', html)
+        if match:
+            data = json.loads(match.group(1))
+            details = data.get('videoDetails', {})
+            microformat = data.get('microformat', {}).get('playerMicroformatRenderer', {})
+            
+            return {
+                "title": details.get('title'),
+                "channel": details.get('author'),
+                "views": details.get('viewCount'),
+                "duration": details.get('lengthSeconds'),
+                "description": details.get('shortDescription'),
+                "publish_date": microformat.get('publishDate'),
+                "category": microformat.get('category')
+            }
+        
         title_match = re.search(r'<title>(.*?)</title>', html)
         title = html_lib.unescape(title_match.group(1).replace(' - YouTube', '')) if title_match else None
         
         channel_match = re.search(r'<link itemprop="name" content="(.*?)">', html)
         channel = html_lib.unescape(channel_match.group(1)) if channel_match else None
         
-        return title, channel
+        return {"title": title, "channel": channel}
     except Exception:
-        return None, None
+        return {}
 
 def extract_video_id(url):
     patterns = [
@@ -160,14 +177,14 @@ async def add_video(req: VideoRequest):
             db_vid = db.get_video(video_id)
             transcript_text = db_vid.get("transcript", "") if db_vid else ""
         
-        meta_title, meta_channel = get_yt_metadata(req.url)
-        video_title = meta_title or f"YouTube Video ({video_id[:6]})"
+        meta = get_yt_metadata(req.url)
+        video_title = meta.get("title") or f"YouTube Video ({video_id[:6]})"
+        meta["title"] = video_title
         
         video_db_id = db.save_video(
             video_id=video_id,
             url=req.url,
-            title=video_title,
-            channel=meta_channel,
+            metadata=meta,
             transcript=transcript_text
         )
         db.add_video_to_session(req.session_id, video_db_id)
@@ -242,16 +259,33 @@ async def chat(req: ChatRequest):
     else:
         combined_retriever = list(v_stores.values())[0].as_retriever(search_kwargs={"k": 4})
 
+    # Compile metadata string
+    meta_info = []
+    for v in session_videos:
+        t = v.get('title') or 'Unknown Title'
+        c = v.get('channel') or 'Unknown Channel'
+        v_str = f"Title: {t}\nChannel: {c}"
+        if v.get('views'): v_str += f"\nViews: {v['views']}"
+        if v.get('duration'): v_str += f"\nDuration (seconds): {v['duration']}"
+        if v.get('publish_date'): v_str += f"\nPublish Date: {v['publish_date']}"
+        if v.get('category'): v_str += f"\nCategory: {v['category']}"
+        if v.get('description'): v_str += f"\nDescription: {v['description'][:500]}..."
+        meta_info.append(v_str)
+    metadata_text = "\n\n".join(meta_info)
+
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2, api_key=OPENAI_API_KEY)
     prompt = PromptTemplate(
         template="""
-You are an AI YouTube Assistant. Provide helpful responses based ONLY on the transcript.
+You are an AI YouTube Assistant. Provide helpful responses based ONLY on the transcript and metadata provided.
+VIDEO METADATA:
+{metadata_text}
+
 HISTORY: {chat_history}
 TRANSCRIPT: {context}
 QUESTION: {question}
 Format response using simple HTML tags like <p>, <strong>, <ul> since this displays in a web browser.
 """,
-        input_variables=['context', 'question', 'chat_history']
+        input_variables=['context', 'question', 'chat_history', 'metadata_text']
     )
     
     messages = db.get_session_messages(req.session_id)
@@ -264,7 +298,8 @@ Format response using simple HTML tags like <p>, <strong>, <ul> since this displ
     parallel_chain = RunnableParallel({
         'context': combined_retriever | RunnableLambda(format_docs),
         'question': RunnablePassthrough(),
-        'chat_history': RunnableLambda(lambda x: get_chat_history())
+        'chat_history': RunnableLambda(lambda x: get_chat_history()),
+        'metadata_text': RunnableLambda(lambda _: metadata_text)
     })
     
     try:
