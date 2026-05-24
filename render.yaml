@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: youtube-chatbot
+    env: python
+    buildCommand: pip install -r Requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: MONGO_URI
+        sync: false
