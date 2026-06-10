@@ -29,7 +29,7 @@ vector_stores_cache: Dict[str, FAISS] = {}
 
 class VideoRequest(BaseModel):
     url: str
-    session_id: str
+    session_id: Optional[str] = None
 
 class ChatRequest(BaseModel):
     message: str
@@ -77,7 +77,7 @@ def get_yt_metadata(url):
 
 def extract_video_id(url):
     patterns = [
-        r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)',
+        r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([^&\n?#]+)',
         r'youtube\.com\/v\/([^&\n?#]+)',
     ]
     for pattern in patterns:
@@ -158,19 +158,40 @@ async def add_video(req: VideoRequest):
     if not video_id:
         raise HTTPException(status_code=400, detail="Invalid YouTube URL")
     
+    # Auto-create session if missing
+    if not req.session_id:
+        req.session_id = db.create_session()
+    
     try:
         if video_id not in vector_stores_cache:
             try:
                 from youtube_transcript_api._errors import YouTubeTranscriptApiException
-                ytt_api = YouTubeTranscriptApi()
-                transcript = ytt_api.fetch(video_id)
-                transcript_text = " ".join([getattr(snippet, 'text', snippet.get('text', '')) if isinstance(snippet, dict) else getattr(snippet, 'text', '') for snippet in transcript])
-            except AttributeError:
-                # Fallback to standard youtube-transcript-api API
-                transcript = YouTubeTranscriptApi.get_transcript(video_id)
-                transcript_text = " ".join([snippet['text'] for snippet in transcript])
+                cookies_file = "cookies.txt" if os.path.exists("cookies.txt") and os.path.getsize("cookies.txt") > 0 else None
+                
+                http_client = None
+                if cookies_file:
+                    import requests
+                    from http.cookiejar import MozillaCookieJar
+                    session = requests.Session()
+                    cookie_jar = MozillaCookieJar(cookies_file)
+                    cookie_jar.load(ignore_discard=True, ignore_expires=True)
+                    session.cookies.update(cookie_jar)
+                    http_client = session
+                
+                try:
+                    ytt_api = YouTubeTranscriptApi(http_client=http_client) if http_client else YouTubeTranscriptApi()
+                    transcript = ytt_api.fetch(video_id)
+                    transcript_text = " ".join([getattr(snippet, 'text', snippet.get('text', '')) if isinstance(snippet, dict) else getattr(snippet, 'text', '') for snippet in transcript])
+                except AttributeError:
+                    # Fallback to standard youtube-transcript-api API
+                    if cookies_file:
+                        transcript = YouTubeTranscriptApi.get_transcript(video_id, cookies=cookies_file)
+                    else:
+                        transcript = YouTubeTranscriptApi.get_transcript(video_id)
+                    transcript_text = " ".join([snippet['text'] for snippet in transcript])
             except Exception as e:
                 # Catch Youtube IP block exception and fallback to a mock transcript
+                print(f"Transcript Error: {e}")
                 transcript_text = "This is a mock transcript provided because YouTube blocked the cloud IP address. The video discusses Neural Networks, artificial intelligence architectures, deep learning, weights, biases, backpropagation, and machine learning models. You can test your ChatGPT RAG integration by asking questions about these topics!"
             process_transcript_to_vectorstore(video_id, transcript_text)
         else:

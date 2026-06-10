@@ -266,10 +266,22 @@ function updateSessionLabel(name) {
    VIDEO MANAGEMENT
 ═══════════════════════════════════════════════════════════ */
 async function addVideo(url) {
-  if (!url || !url.includes('youtube.com') && !url.includes('youtu.be')) {
+  if (!url || (!url.includes('youtube.com') && !url.includes('youtu.be'))) {
     toast('Please enter a valid YouTube URL', 'error');
     return;
   }
+  
+  if (!State.currentSession || !State.currentSession.id) {
+    setStatus('Initializing session…', 'loading');
+    try {
+      State.currentSession = await API.createSession();
+    } catch (e) {
+      toast('Failed to create session', 'error');
+      setStatus('Error', 'error');
+      return;
+    }
+  }
+
   if (State.videos.find(v => v.url === url)) {
     toast('This video is already loaded', 'warning');
     return;
