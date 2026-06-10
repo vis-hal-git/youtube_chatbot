@@ -21,18 +21,7 @@ from models import ExportData, ChatSession, Message, Video, Bookmark, Note
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-from fastapi.middleware.cors import CORSMiddleware
-
 app = FastAPI(title="VidMind FastAPI Backend")
-
-# Allow CORS for Vercel frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins (update this to your Vercel URL later for security)
-    allow_credentials=True,
-    allow_methods=["*"],  
-    allow_headers=["*"],  
-)
 
 # InMemory Cache for Vector Stores to avoid rebuilding FAISS indexes
 vector_stores_cache: Dict[str, FAISS] = {}

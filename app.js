@@ -25,11 +25,7 @@ const State = {
 /* ═══════════════════════════════════════════════════════════
    API LAYER — Wire these to your FastAPI backend
 ═══════════════════════════════════════════════════════════ */
-// Automatically use '/api' for local development, and the Render URL for production
-const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const API_BASE = isLocal 
-  ? '/api' 
-  : 'https://youtube-chatbot-backend.onrender.com/api'; // Replace with your actual Render URL
+const API_BASE = '/api'; // Change to your FastAPI base URL
 
 const API = {
   /**
