@@ -242,6 +242,7 @@ async def chat(req: ChatRequest):
     session_videos = db.get_session_videos(req.session_id)
     
     if not session_videos:
+        print(f"DEBUG: No videos loaded for session {req.session_id}")
         raise HTTPException(status_code=400, detail="No videos loaded")
 
     v_stores = {}
@@ -254,6 +255,7 @@ async def chat(req: ChatRequest):
                 v_stores[v['video_id']] = vs
 
     if not v_stores:
+         print(f"DEBUG: Transcripts could not be processed for session {req.session_id}")
          raise HTTPException(status_code=400, detail="Transcripts could not be processed")
 
     # If target is specific video id (string like abc123)
