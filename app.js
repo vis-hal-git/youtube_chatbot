@@ -312,6 +312,9 @@ async function addVideo(url) {
   try {
     const video = await API.addVideo(url);
     State.videos.push(video);
+    if (video.sessionId && State.currentSession.id !== video.sessionId) {
+      State.currentSession.id = video.sessionId;
+    }
     if (video.sessionName) {
       State.currentSession.name = video.sessionName;
       updateSessionLabel(video.sessionName);

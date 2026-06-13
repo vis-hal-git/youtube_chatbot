@@ -20,6 +20,7 @@ from models import ExportData, ChatSession, Message, Video, Bookmark, Note
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+PROXY_URL = os.getenv("PROXY_URL")
 
 app = FastAPI(title="VidMind FastAPI Backend")
 
@@ -170,23 +171,38 @@ async def add_video(req: VideoRequest):
                 http_client = None
                 if cookies_file:
                     import requests
-                    from http.cookiejar import MozillaCookieJar
-                    session = requests.Session()
-                    cookie_jar = MozillaCookieJar(cookies_file)
-                    cookie_jar.load(ignore_discard=True, ignore_expires=True)
-                    session.cookies.update(cookie_jar)
-                    http_client = session
+                    from http.cookiejar import MozillaCookieJar, LoadError
+                    try:
+                        session = requests.Session()
+                        cookie_jar = MozillaCookieJar(cookies_file)
+                        cookie_jar.load(ignore_discard=True, ignore_expires=True)
+                        session.cookies.update(cookie_jar)
+                        http_client = session
+                    except Exception as e:
+                        print(f"Failed to load cookies.txt: {e}. Proceeding without cookies.")
+                        cookies_file = None
+                        http_client = None
                 
+                proxies = {"http": PROXY_URL, "https": PROXY_URL} if PROXY_URL else None
                 try:
-                    ytt_api = YouTubeTranscriptApi(http_client=http_client) if http_client else YouTubeTranscriptApi()
+                    ytt_kwargs = {}
+                    if proxies:
+                        ytt_kwargs['proxies'] = proxies
+                    if http_client:
+                        ytt_kwargs['http_client'] = http_client
+                        
+                    ytt_api = YouTubeTranscriptApi(**ytt_kwargs)
                     transcript = ytt_api.fetch(video_id)
                     transcript_text = " ".join([getattr(snippet, 'text', snippet.get('text', '')) if isinstance(snippet, dict) else getattr(snippet, 'text', '') for snippet in transcript])
                 except AttributeError:
                     # Fallback to standard youtube-transcript-api API
+                    kwargs = {}
+                    if proxies:
+                        kwargs['proxies'] = proxies
                     if cookies_file:
-                        transcript = YouTubeTranscriptApi.get_transcript(video_id, cookies=cookies_file)
-                    else:
-                        transcript = YouTubeTranscriptApi.get_transcript(video_id)
+                        kwargs['cookies'] = cookies_file
+                        
+                    transcript = YouTubeTranscriptApi.get_transcript(video_id, **kwargs)
                     transcript_text = " ".join([snippet['text'] for snippet in transcript])
             except Exception as e:
                 # Catch Youtube IP block exception and fallback to a mock transcript
@@ -223,7 +239,8 @@ async def add_video(req: VideoRequest):
             "title": video_data['title'],
             "channel": video_data.get('channel'),
             "thumb": f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg",
-            "sessionName": session_name
+            "sessionName": session_name,
+            "sessionId": req.session_id
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

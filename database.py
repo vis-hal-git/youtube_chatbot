@@ -6,7 +6,7 @@ Handles all MongoDB operations for persistent storage
 import os
 from datetime import datetime
 from typing import Optional, List, Dict
-from pymongo import MongoClient
+from pymongo import MongoClient, ReturnDocument
 from bson.objectid import ObjectId
 from dotenv import load_dotenv
 
@@ -50,7 +50,7 @@ def save_video(video_id: str, url: str, metadata: dict = None, transcript: str =
         {"video_id": video_id},
         {"$set": update_data, "$setOnInsert": {"created_at": now}},
         upsert=True,
-        return_document=True
+        return_document=ReturnDocument.AFTER
     )
     return str(result['_id'])
 
