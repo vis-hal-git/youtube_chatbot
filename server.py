@@ -20,7 +20,6 @@ from models import ExportData, ChatSession, Message, Video, Bookmark, Note
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-PROXY_URL = os.getenv("PROXY_URL")
 
 app = FastAPI(title="VidMind FastAPI Backend")
 
@@ -167,7 +166,6 @@ async def add_video(req: VideoRequest):
             try:
                 from youtube_transcript_api._errors import YouTubeTranscriptApiException
                 cookies_file = "cookies.txt" if os.path.exists("cookies.txt") and os.path.getsize("cookies.txt") > 0 else None
-                
                 http_client = None
                 if cookies_file:
                     import requests
@@ -183,31 +181,31 @@ async def add_video(req: VideoRequest):
                         cookies_file = None
                         http_client = None
                 
-                proxies = {"http": PROXY_URL, "https": PROXY_URL} if PROXY_URL else None
                 try:
-                    ytt_kwargs = {}
-                    if proxies:
-                        ytt_kwargs['proxies'] = proxies
-                    if http_client:
-                        ytt_kwargs['http_client'] = http_client
-                        
-                    ytt_api = YouTubeTranscriptApi(**ytt_kwargs)
-                    transcript = ytt_api.fetch(video_id)
-                    transcript_text = " ".join([getattr(snippet, 'text', snippet.get('text', '')) if isinstance(snippet, dict) else getattr(snippet, 'text', '') for snippet in transcript])
+                    ytt_api = YouTubeTranscriptApi(http_client=http_client) if http_client else YouTubeTranscriptApi()
+                    transcript_list = ytt_api.list(video_id)
+                    try:
+                        transcript = transcript_list.find_transcript(['en'])
+                    except Exception:
+                        transcript = list(transcript_list)[0]
+                        try:
+                            transcript = transcript.translate('en')
+                        except Exception:
+                            pass
+                    
+                    fetched = transcript.fetch()
+                    transcript_text = " ".join([getattr(snippet, 'text', snippet.get('text', '')) if isinstance(snippet, dict) else getattr(snippet, 'text', '') for snippet in fetched])
                 except AttributeError:
                     # Fallback to standard youtube-transcript-api API
-                    kwargs = {}
-                    if proxies:
-                        kwargs['proxies'] = proxies
                     if cookies_file:
-                        kwargs['cookies'] = cookies_file
-                        
-                    transcript = YouTubeTranscriptApi.get_transcript(video_id, **kwargs)
-                    transcript_text = " ".join([snippet['text'] for snippet in transcript])
+                        fetched = YouTubeTranscriptApi.get_transcript(video_id, cookies=cookies_file)
+                    else:
+                        fetched = YouTubeTranscriptApi.get_transcript(video_id)
+                    transcript_text = " ".join([snippet['text'] for snippet in fetched])
             except Exception as e:
-                # Catch Youtube IP block exception and fallback to a mock transcript
+                # Catch Youtube IP block or NoTranscriptFound exception
                 print(f"Transcript Error: {e}")
-                transcript_text = "This is a mock transcript provided because YouTube blocked the cloud IP address. The video discusses Neural Networks, artificial intelligence architectures, deep learning, weights, biases, backpropagation, and machine learning models. You can test your ChatGPT RAG integration by asking questions about these topics!"
+                transcript_text = f"Warning: Could not fetch transcript. Error: {e}. The video might not have captions or the IP is blocked."
             process_transcript_to_vectorstore(video_id, transcript_text)
         else:
             db_vid = db.get_video(video_id)
