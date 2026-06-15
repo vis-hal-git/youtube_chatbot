@@ -1011,25 +1011,7 @@ async function init() {
     console.warn("Could not load session history", e);
   }
 
-  // If there are sessions, load the most recent one automatically
-  if (State.sessions.length > 0 && (!State.currentSession || !State.currentSession.id)) {
-    try {
-      const recentSession = State.sessions[0];
-      const sessionData = await API.loadSession(recentSession.id);
-      if (sessionData) {
-        State.currentSession = sessionData;
-        State.messages = sessionData.messages || [];
-        State.videos = sessionData.videos || [];
-        State.bookmarks = sessionData.bookmarks || [];
-        State.notes = sessionData.notes || [];
-        State.chatTarget = 'all';
-        updateSessionLabel(sessionData.name);
-      }
-    } catch(e) {
-      console.warn("Could not load recent session", e);
-    }
-  }
-
+  // Auto-loading of previous session is disabled so it starts fresh.
   // If still no session, create a new one
   if (!State.currentSession || !State.currentSession.id) {
     try {
